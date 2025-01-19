@@ -36,7 +36,7 @@ public class Program
 
         ColoredConsole.WriteLine(testColorString); // #FF0000HELLO #0000FFWORLD!
 
-        test = testColorString.ToString();
+        test = $"{testColorString}";
         Console.WriteLine(test); // #FF0000HELLO #0000FFWORLD!
         testColorString = test;
 

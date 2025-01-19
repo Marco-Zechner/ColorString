@@ -24,6 +24,12 @@ public class ColoredString
         _colorMarkers = [new ColorMarker(Color.White, 0)];
     }
 
+    public ColoredString(string text, List<ColorMarker> colorMarkers)
+    {
+        _text = text;
+        _colorMarkers = ValidateColorMarkers(colorMarkers, text.Length);
+    }
+
     public ColoredString()
     {
         _text = string.Empty;
@@ -44,8 +50,13 @@ public class ColoredString
         List<ColorMarker> colorMarkersA = [..a._colorMarkers];
         colorMarkersB.RemoveAll(marker => colorMarkersA.Any(markerA => markerA.StartIndex == marker.StartIndex));
         var colorMarkers = colorMarkersA.Concat(colorMarkersB).ToList();
+        colorMarkers = ValidateColorMarkers(colorMarkers, text.Length);
+        return new ColoredString(text) { _colorMarkers = [.. colorMarkers] };
+    }
+
+    private static List<ColorMarker> ValidateColorMarkers(List<ColorMarker> colorMarkers, int textLength) {
+        colorMarkers = [.. colorMarkers.Where(marker => marker.StartIndex > 0 && marker.StartIndex < textLength)];
         colorMarkers.Sort((a, b) => a.StartIndex.CompareTo(b.StartIndex));
-        // remove the 2. marker if it has the same color as the 1. marker of any 2 markers
         for (int i = 0; i < colorMarkers.Count - 1; i++)
         {
             if (colorMarkers[i].Color == colorMarkers[i + 1].Color)
@@ -53,20 +64,19 @@ public class ColoredString
                 colorMarkers.RemoveAt(i + 1);
                 i--;
             }
+            if (colorMarkers[i].StartIndex == colorMarkers[i + 1].StartIndex)
+            {
+                colorMarkers.RemoveAt(i);
+                i--;
+            }
         }
-
-        return new ColoredString(text) { _colorMarkers = [.. colorMarkers] };
+        return colorMarkers;
     }
 
     // convert string to ColoredString
     public static implicit operator ColoredString(string text)
     {
         return new ColoredString(text);
-    }
-
-    public static implicit operator string(ColoredString coloredString)
-    {
-        return coloredString._text;
     }
 
     public override string ToString()
@@ -106,6 +116,20 @@ public class ColoredString
             result += separator + toJoin[i];
         }
         return result;
+    }
+
+    public ColoredString PadRight(int totalWidth)
+    {
+        return new ColoredString(_text.PadRight(totalWidth)) { _colorMarkers = [.. _colorMarkers] };
+    }
+
+    public ColoredString PadLeft(int totalWidth)
+    {
+        int length = _text.Length;
+        string text = _text.PadLeft(totalWidth);
+        int diff = totalWidth - length;
+        var colorMarkers = _colorMarkers.Select(marker => new ColorMarker(marker.Color, marker.StartIndex + diff)).ToList();
+        return new ColoredString(text) { _colorMarkers = [.. colorMarkers] };
     }
 
     #endregion
