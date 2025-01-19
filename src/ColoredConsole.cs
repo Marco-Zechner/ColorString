@@ -10,6 +10,11 @@ public static class ColoredConsole
         {
             ColorMarker? marker = colorMarkers[i];
             int startIndex = marker.StartIndex;
+            if (i == 0 && startIndex > 0) {
+                Console.ResetColor();
+                Console.Write(text[..startIndex]);
+            }
+
             int endIndex = i + 1 < colorMarkers.Count ? colorMarkers[i + 1].StartIndex : text.Length;
             string section = text[startIndex..endIndex];
             Color color = marker.Color;

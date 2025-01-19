@@ -24,7 +24,7 @@ public class ColoredString
         _colorMarkers = [new ColorMarker(Color.White, 0)];
     }
 
-    public ColoredString(string text, List<ColorMarker> colorMarkers)
+    public ColoredString(List<ColorMarker> colorMarkers, string text)
     {
         _text = text;
         _colorMarkers = ValidateColorMarkers(colorMarkers, text.Length);
@@ -55,7 +55,7 @@ public class ColoredString
     }
 
     private static List<ColorMarker> ValidateColorMarkers(List<ColorMarker> colorMarkers, int textLength) {
-        colorMarkers = [.. colorMarkers.Where(marker => marker.StartIndex > 0 && marker.StartIndex < textLength)];
+        colorMarkers = [.. colorMarkers.Where(marker => marker.StartIndex >= 0 && marker.StartIndex < textLength)];
         colorMarkers.Sort((a, b) => a.StartIndex.CompareTo(b.StartIndex));
         for (int i = 0; i < colorMarkers.Count - 1; i++)
         {
@@ -130,6 +130,33 @@ public class ColoredString
         int diff = totalWidth - length;
         var colorMarkers = _colorMarkers.Select(marker => new ColorMarker(marker.Color, marker.StartIndex + diff)).ToList();
         return new ColoredString(text) { _colorMarkers = [.. colorMarkers] };
+    }
+
+    public ColoredString Replace(string oldValue, ColoredString newValue) {
+        int accoumulatedOffset = 0;
+        var colorMarkers = new List<ColorMarker>();
+        string text = string.Empty;
+        for (int i = 0; i < _text.Length; i++)
+        {
+            if (_text[i..].StartsWith(oldValue))
+            {
+                var lastMarker = colorMarkers.LastOrDefault(marker => marker.StartIndex < text.Length);
+                colorMarkers.AddRange(newValue.ColorMarkers.Select(marker => new ColorMarker(marker.Color, marker.StartIndex + text.Length)));
+                if (lastMarker != null)
+                    colorMarkers.Add(new ColorMarker(lastMarker.Color, text.Length + newValue.Text.Length));
+                text += newValue.Text;
+                i += oldValue.Length - 1;
+                accoumulatedOffset += newValue.Text.Length - oldValue.Length;
+            }
+            else
+            {
+                text += _text[i];
+                var marker = _colorMarkers.FirstOrDefault(marker => marker.StartIndex == i);
+                if (marker != null)
+                    colorMarkers.Add(new ColorMarker(marker.Color, marker.StartIndex + accoumulatedOffset));
+            }
+        }
+        return new ColoredString(colorMarkers, text);
     }
 
     #endregion
