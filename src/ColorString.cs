@@ -1,200 +1,118 @@
-﻿using System.Collections;
+﻿using System.Text;
 
 namespace MarcoZechner.ColorString;
 
-public class ColoredString : IEnumerable<ColorStringPair>, IFormattable
+public class ColoredString
 {
-    private readonly List<ColorStringPair> colorStringPairs = [];
-    public int TextLength => colorStringPairs.Sum(pair => pair.String.Length);
-    public string Text => ToString();
-    public int Length => colorStringPairs.Count;
-    public ColorStringPair this[int index] {
-        get {
-            ArgumentOutOfRangeException.ThrowIfNegative(index, nameof(index));
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Length, nameof(index));
-            return colorStringPairs[index];
-        }
-        set {
-            ArgumentOutOfRangeException.ThrowIfNegative(index, nameof(index));
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Length, nameof(index));
-            colorStringPairs[index] = value;
-        }
+    public List<ColorMarker> ColorMarkers {
+        get => _colorMarkers;
+        set => _colorMarkers = value;
     }
 
-    public ColoredString() { }
+    private List<ColorMarker> _colorMarkers = [];
 
-    public ColoredString(ColoredString original){
-        colorStringPairs.AddRange(original.colorStringPairs.Select(pair => new ColorStringPair(new Color(pair.Color), pair.String)));
-    } 
+    public string Text {
+        get => _text;
+        set => _text = value;
+    }
 
-    // Constructor accepting a plain string (no color)
-    /// <summary>
-    /// <para>Defining color in the string is done by using the following pattern: "<c>>[colorPattern]followingColoredText</c>"<br></br>
-    /// colorPattern can be either a hex color "<c>#RRGGBBAA</c>" or an rgb color "<c>RRR,GGG,BBB,AAA</c>", <c>AA/AAA</c> is optional. <br></br>
-    /// Example: "<c>>[#FF0000]Hello, World!</c>" or "<c>>[255,0,0]Hello, World!</c>" </para>
-    /// <para><b>Escaping</b> the color pattern is done by using the following pattern: "<c>>>[...</c>"<br></br>
-    /// Example: "<c>>>[#FF0000]Hello, World!</c>" </para>
-    /// </summary>
-    /// <param name="text"></param>
+    private string _text;
+
     public ColoredString(string text)
     {
-        colorStringPairs = ParseString(text);
+        _text = text;
+        _colorMarkers = [new ColorMarker(Color.White, 0)];
     }
 
-    // Constructor accepting a color and string
+    public ColoredString()
+    {
+        _text = string.Empty;
+        _colorMarkers = [new ColorMarker(Color.White, 0)];
+    }
+
     public ColoredString(Color color, string text)
     {
-        colorStringPairs = ParseString(text, color);
+        _text = text;
+        _colorMarkers = [new ColorMarker(color, 0)];
     }
 
-    // Implicit conversion from string to ColorString
+    // + operator to concatenate ColoredStrings
+    public static ColoredString operator +(ColoredString a, ColoredString b)
+    {
+        var text = a._text + b._text;
+        var colorMarkersB = b._colorMarkers.Select(marker => new ColorMarker(marker.Color, marker.StartIndex + a._text.Length)).ToList();
+        List<ColorMarker> colorMarkersA = [..a._colorMarkers];
+        colorMarkersB.RemoveAll(marker => colorMarkersA.Any(markerA => markerA.StartIndex == marker.StartIndex));
+        var colorMarkers = colorMarkersA.Concat(colorMarkersB).ToList();
+        colorMarkers.Sort((a, b) => a.StartIndex.CompareTo(b.StartIndex));
+        // remove the 2. marker if it has the same color as the 1. marker of any 2 markers
+        for (int i = 0; i < colorMarkers.Count - 1; i++)
+        {
+            if (colorMarkers[i].Color == colorMarkers[i + 1].Color)
+            {
+                colorMarkers.RemoveAt(i + 1);
+                i--;
+            }
+        }
+
+        return new ColoredString(text) { _colorMarkers = [.. colorMarkers] };
+    }
+
+    // convert string to ColoredString
     public static implicit operator ColoredString(string text)
     {
         return new ColoredString(text);
     }
 
-    // Concatenation operator
-    public static ColoredString operator +(ColoredString cs1, ColoredString cs2)
+    public static implicit operator string(ColoredString coloredString)
     {
-        var result = new ColoredString(cs1);
-        result.colorStringPairs.AddRange(cs2.colorStringPairs);
-        return result;
-    }
-
-    public static implicit operator string(ColoredString v)
-    {
-        return v.ToString();
-    }
-
-    private static List<ColorStringPair> ParseString(string text, Color? startColor = null) {
-        var colorStringPairs = new List<ColorStringPair>();
-        var color = startColor ?? Color.White;
-        var str = "";
-        var i = 0;
-        while (i < text.Length) {
-            if (text[i] != '>' || i == text.Length - 1 || text[i + 1] != '[')
-            {
-                str += text[i++];
-                continue;
-            }
-
-            if (i > 0 && text[i - 1] == '>') {
-                i++;
-                continue;
-            }
-
-            if (str.Length > 0)
-            {
-                colorStringPairs.Add(new ColorStringPair(color, str));
-                str = "";
-            }
-
-            var j = i + 2;
-            var colorPattern = "";
-            while (j < text.Length)
-            {
-                if (text[j] == ']')
-                {
-                    break;
-                }
-                if (j >= text.Length - 1)
-                {
-                    throw new ArgumentException("Invalid color string. Could not find end of pattern. Use hex >[#RRGGBBAA] or rgb >[RRR,GGG,BBB,AAA].");
-                }
-                colorPattern += text[j];
-                j++;
-            }
-            if (j >= text.Length -1)
-                break;
-            color = new Color(colorPattern);
-            i = j + 1;
-        }
-        if (str.Length > 0) {
-            colorStringPairs.Add(new ColorStringPair(color, str));
-        }
-        return colorStringPairs;
+        return coloredString._text;
     }
 
     public override string ToString()
     {
-        return ToString(null);
+        return _text;
     }
 
-    public string ToString(string? format, IFormatProvider? formatProvider = null)
+    public string ToFormattedString()
     {
-        return format switch
+        var sb = new StringBuilder();
+        var colorMarkers = _colorMarkers.OrderBy(marker => marker.StartIndex);
+        var index = 0;
+        foreach (var marker in colorMarkers)
         {
-            "color" => string.Concat(colorStringPairs.Select(pair => $"{pair.Color:color}{pair.String}")),
-            _ => string.Concat(colorStringPairs.Select(pair => pair.String)),
-        };
-    }
-
-    public IEnumerator<ColorStringPair> GetEnumerator()
-    {
-        return colorStringPairs.GetEnumerator();
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
-
-    public override bool Equals(object? obj)
-    {
-        if (obj is not ColoredString other)
-            return false;
-        if (Length != other.Length)
-            return false;
-        for (int i = 0; i < Length; i++)
-        {
-            if (!this[i].Equals(other[i]))
-                return false;
+            if (index < marker.StartIndex)
+            {
+                sb.Append(_text.AsSpan(index, marker.StartIndex - index));
+                index = marker.StartIndex;
+            }
+            sb.Append(marker.Color);
         }
-        return true;
+        if (index < _text.Length)
+            sb.Append(_text.AsSpan(index));
+        return sb.ToString();
     }
 
-    public override int GetHashCode()
+    #region String Manipulation
+
+    public static ColoredString Join(ColoredString separator, IEnumerable<ColoredString> values)
     {
-        return HashCode.Combine(colorStringPairs.GetHashCode());
+        List<ColoredString> toJoin = [.. values];
+        if (toJoin.Count == 0)
+            return new ColoredString();
+        ColoredString result = toJoin[0];
+        for (int i = 1; i < toJoin.Count; i++)
+        {
+            result += separator + toJoin[i];
+        }
+        return result;
     }
 
-    public static bool operator ==(ColoredString left, ColoredString right)
-    {
-        return left.Equals(right);
-    }
-
-    public static bool operator !=(ColoredString left, ColoredString right)
-    {
-        return !(left == right);
+    #endregion
 }
-}
 
-public class ColorStringPair(Color color, string str)
+public record ColorMarker(Color Color, int StartIndex)
 {
-    public Color Color { get; set; } = color;
-    public string String { get; set; } = str;
-
-    public ColorStringPair(ColorStringPair original) : this(new Color(original.Color), original.String){ }
-
-    public override bool Equals(object? obj)
-    {
-        if (obj is not ColorStringPair other)
-            return false;
-        return Color.Equals(other.Color) && String.Equals(other.String);
-    }
-
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Color.GetHashCode(), String.GetHashCode());
-    }
-
-    public static bool operator ==(ColorStringPair left, ColorStringPair right)
-    {
-        return left.Equals(right);
-    }
-
-    public static bool operator !=(ColorStringPair left, ColorStringPair right)
-    {
-        return !(left == right);
-    }
+    public Color Color { get; set; } = Color;
+    public int StartIndex { get; set; } = StartIndex;
 }

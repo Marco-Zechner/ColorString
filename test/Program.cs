@@ -8,48 +8,40 @@ public class Program
     {
         ColoredString coloredString = "\nDefault String\n";
         ColoredString coloredString2 = new(new Color("#FF0000"), "Hello, ");
-        ColoredString coloredString3 = ">[#00FF00FF]World!";
+        ColoredString coloredString3 = Color.Green.For("World!");
         ColoredString coloredString4 = coloredString + coloredString2;
         ColoredString coloredString5 = "Hello, " + coloredString3;
-        ColoredString coloredString6 = coloredString4 + ">[255,255,0]World!";
-        ColoredString escapedString =  ">>[#00FF00FF]World!";
+        ColoredString coloredString6 = coloredString4 + new Color("255,255,0").For("World!");
         Color myFavoriteColor = new("#FF00FF");
-        ColoredString interpolatedString = $"{myFavoriteColor:color}This my favorite color!";
-        ColoredString interpolatedStringWrong = $"{myFavoriteColor}This my favorite color!";
+        ColoredString interpolatedString = myFavoriteColor.For($"This my favorite color: {myFavoriteColor:rgba}");
 
-        Console.Write(coloredString5); // Writes only the text without any color
-        Console.WriteLine(coloredString6); // Writes only the text without any color
-        Console.WriteLine(escapedString); // Writes only the text without any color
-        ColoredConsole.Write(coloredString5); // Writes the text correctly colored
-        ColoredConsole.WriteLine(coloredString6); // Writes the text correctly colored
-        ColoredConsole.WriteLine(escapedString); // Writes the text correctly colored
+        Console.Write(coloredString5); // Hello, World!
+        Console.WriteLine(coloredString6); // \nDefault String\nHello, World!
+        ColoredConsole.Write(coloredString5);  // White:Hello, Green:World!
+        ColoredConsole.WriteLine(coloredString6); // White:\nDefault String\nRed:Hello, Yellow:World!
 
-        ColoredConsole.WriteLine(interpolatedString); // Writes the text correctly colored
-        ColoredConsole.WriteLine(interpolatedStringWrong); // Writes the text without any color
+        ColoredConsole.WriteLine(interpolatedString); // Magenta:This my favorite color: rgba(255, 0, 255, 255)
 
         
-        ColoredString testColorString = "Hello >[#0000FF]World!";
-        for (int i = 0; i < testColorString.Length; i++)
-        {
-            var pair = testColorString[i];
-            if (pair.Color != Color.Blue)
-                pair.Color = new Color("#FF0000");
-            pair.String = pair.String.ToUpper();
-            testColorString[i] = pair;           
-        }
+        ColoredString testColorString = "Hello " + Color.Blue.For("World!");
+        testColorString.Text = testColorString.Text.ToUpper();
+        // replace all colors that are not blue with red
+        testColorString.ColorMarkers = [.. testColorString.ColorMarkers.Select(marker => marker.Color != Color.Blue ? new ColorMarker(Color.Red, marker.StartIndex) : marker)];
 
-        ColoredConsole.WriteLine(testColorString); // Writes the text correctly colored and uppercased
+        ColoredConsole.WriteLine(testColorString); // Red:HELLO Blue:WORLD!
 
-        string test = testColorString.ToString("color");
-        Console.WriteLine(test); // Writes the text correctly colored and uppercased
+        string test = testColorString.ToFormattedString();
+        Console.WriteLine(test); // #FF0000HELLO #0000FFWORLD!
         testColorString = test;
 
-        ColoredConsole.WriteLine(testColorString); // Writes the text correctly colored and uppercased
+        ColoredConsole.WriteLine(testColorString); // #FF0000HELLO #0000FFWORLD!
 
-        test = testColorString;
-        Console.WriteLine(test); // Writes the text correctly colored and uppercased
+        test = testColorString.ToString();
+        Console.WriteLine(test); // #FF0000HELLO #0000FFWORLD!
         testColorString = test;
 
-        ColoredConsole.WriteLine(testColorString); // Writes the text correctly colored and uppercased
+        ColoredConsole.WriteLine(testColorString); // #FF0000HELLO #0000FFWORLD!
+
+        ColoredConsole.WriteLine(Color.Yellow.For("Hello, World!")); // Yellow:Hello, World!
     }
 }

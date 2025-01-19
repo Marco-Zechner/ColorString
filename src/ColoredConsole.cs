@@ -2,20 +2,26 @@ namespace MarcoZechner.ColorString;
 
 public static class ColoredConsole
 {
-    public static void Write(ColoredString colorString, bool resetColor = true)
+    public static void Write(ColoredString colorString)
     {
-        foreach (var pair in colorString)
+        string text = colorString.Text;
+        var colorMarkers = colorString.ColorMarkers;
+        for (int i = 0; i < colorMarkers.Count; i++)
         {
-            Console.ForegroundColor = ClosestConsoleColor(pair.Color);
-            Console.Write(pair.String);
+            ColorMarker? marker = colorMarkers[i];
+            int startIndex = marker.StartIndex;
+            int endIndex = i + 1 < colorMarkers.Count ? colorMarkers[i + 1].StartIndex : text.Length;
+            string section = text[startIndex..endIndex];
+            Color color = marker.Color;
+            Console.ForegroundColor = ClosestConsoleColor(color);
+            Console.Write(section);
         }
-        if (resetColor)
-            Console.ResetColor();
+        Console.ResetColor();
     }
 
-    public static void WriteLine(ColoredString colorString, bool resetColor = true)
+    public static void WriteLine(ColoredString colorString)
     {
-        Write(colorString, resetColor);
+        Write(colorString);
         Console.WriteLine();
     }
 

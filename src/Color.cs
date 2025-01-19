@@ -2,12 +2,12 @@ using System.Globalization;
 
 namespace MarcoZechner.ColorString;
 
-public class Color(byte red, byte green, byte blue, byte alpha = 255) : IFormattable
+public record Color(byte RedValue, byte GreenValue, byte BlueValue, byte AlphaValue = 255) : IFormattable
 {
-    public byte RedValue { get; set; } = red;
-    public byte GreenValue { get; set; } = green;
-    public byte BlueValue { get; set; } = blue;
-    public byte AlphaValue { get; set; } = alpha;
+    public byte RedValue { get; set; } = RedValue;
+    public byte GreenValue { get; set; } = GreenValue;
+    public byte BlueValue { get; set; } = BlueValue;
+    public byte AlphaValue { get; set; } = AlphaValue;
 
     public Color(string pattern) : this(0, 0, 0)
     {
@@ -38,7 +38,7 @@ public class Color(byte red, byte green, byte blue, byte alpha = 255) : IFormatt
 
         string[] parts = pattern.Split(',');
         if (parts.Length != 3 && parts.Length != 4)
-            throw new ArgumentException("RGB string must have 3 or 4 number-sections. (e.g. rgb,255,0,0,255)");
+            throw new ArgumentException("RGB string must have 3 or 4 number-sections. (e.g. 100,100,100 or 255,0,0,255)");
 
         if (byte.TryParse(parts[0], out red) &&
             byte.TryParse(parts[1], out green) &&
@@ -54,8 +54,11 @@ public class Color(byte red, byte green, byte blue, byte alpha = 255) : IFormatt
         throw new ArgumentException($"Invalid RGB color string: {pattern}");
     }
 
-    public Color(Color color) : this(color.RedValue, color.GreenValue, color.BlueValue, color.AlphaValue)
-    {
+    public Color(Color original){
+        RedValue = original.RedValue;
+        GreenValue = original.GreenValue;
+        BlueValue = original.BlueValue;
+        AlphaValue = original.AlphaValue;
     }
 
     public Color LayerWith(Color topColor)
@@ -93,8 +96,6 @@ public class Color(byte red, byte green, byte blue, byte alpha = 255) : IFormatt
         return Math.Sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
     }
 
-
-
     public override string ToString()
     {
         return ToString("hex");
@@ -107,18 +108,22 @@ public class Color(byte red, byte green, byte blue, byte alpha = 255) : IFormatt
 
         return format switch
         {
-            "color" => $">[#{RedValue:X2}{GreenValue:X2}{BlueValue:X2}{AlphaValue:X2}]",  
             "hex" => $"#{RedValue:X2}{GreenValue:X2}{BlueValue:X2}",
             "hex4" => $"#{RedValue:X2}{GreenValue:X2}{BlueValue:X2}{AlphaValue:X2}",
             "rgb" => $"rgb({RedValue}, {GreenValue}, {BlueValue})",
-            "rgba" => $"rgb({RedValue}, {GreenValue}, {BlueValue}, {AlphaValue})",
-            _ => throw new ArgumentException("Invalid format string. Use 'color', 'hex', 'hex4', 'rgb' or 'rgba'.")
+            "rgba" => $"rgba({RedValue}, {GreenValue}, {BlueValue}, {AlphaValue})",
+            _ => throw new ArgumentException("Invalid format string. Use 'hex', 'hex4', 'rgb' or 'rgba'.")
         };
     }
 
     public static implicit operator string(Color color)
     {
         return color.ToString();
+    }
+
+    public ColoredString For(string text)
+    {
+        return new(this, text);
     }
 
     /// <summary>
@@ -185,28 +190,4 @@ public class Color(byte red, byte green, byte blue, byte alpha = 255) : IFormatt
     /// #FFFFFF, White, rgb(255, 255, 255)
     /// </summary>
     public static Color White => new(255, 255, 255);
-
-    public override bool Equals(object? obj)
-    {
-        return obj is Color color &&
-               RedValue == color.RedValue &&
-               GreenValue == color.GreenValue &&
-               BlueValue == color.BlueValue &&
-               AlphaValue == color.AlphaValue;
-    }
-
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(RedValue, GreenValue, BlueValue, AlphaValue);
-    }
-
-    public static bool operator ==(Color left, Color right)
-    {
-        return left.Equals(right);
-    }
-
-    public static bool operator !=(Color left, Color right)
-    {
-        return !(left == right);
-    }
 }
