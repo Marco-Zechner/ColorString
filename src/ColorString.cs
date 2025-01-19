@@ -79,6 +79,11 @@ public class ColoredString
         return new ColoredString(text);
     }
 
+    public static implicit operator ColoredString(char character)
+    {
+        return new ColoredString(character.ToString());
+    }
+
     public override string ToString()
     {
         return _text;
@@ -157,6 +162,102 @@ public class ColoredString
             }
         }
         return new ColoredString(colorMarkers, text);
+    }
+
+    public ColoredString[] Split(string[] separator, int count = 0, StringSplitOptions stringSplitOptions = StringSplitOptions.None)
+    {
+        List<ColoredString> result = [];
+        ColoredString textSection = new();
+        ColorMarker? lastMarker = null;
+        for (int i = 0; i < _text.Length; i++)
+        {
+            string? foundSeperator = separator.ToList().FirstOrDefault(sep => sep != null && _text[i..].StartsWith(sep), null);
+
+            if (foundSeperator != null)
+            {
+                if (stringSplitOptions == StringSplitOptions.TrimEntries)
+                    textSection = textSection.Trim();
+
+                if (stringSplitOptions != StringSplitOptions.RemoveEmptyEntries || textSection.Text.Length > 0) {
+                    result.Add(textSection);
+                }
+
+                // Early exit if we reached the max count
+                if (result.Count == count -1) {
+                    textSection = new ColoredString(_text[(i + foundSeperator.Length)..]);
+                    if (lastMarker != null)
+                        textSection.ColorMarkers.Add(new ColorMarker(lastMarker.Color, textSection.Text.Length));
+                    textSection.ColorMarkers = [.. _colorMarkers.Select(marker => new ColorMarker(marker.Color, marker.StartIndex - i - foundSeperator.Length)).Where(marker => marker.StartIndex >= 0)];
+                    
+                    if (stringSplitOptions == StringSplitOptions.TrimEntries)
+                        textSection = textSection.Trim();
+
+                    if (stringSplitOptions != StringSplitOptions.RemoveEmptyEntries || textSection.Text.Length > 0) {
+                        result.Add(textSection);
+                    }
+                    return [.. result];
+                }
+
+                // Prepare next text section and continue the previous color if present
+                textSection = new ColoredString();
+                i += foundSeperator.Length - 1;
+                if (lastMarker != null)
+                    textSection.ColorMarkers.Add(new ColorMarker(lastMarker.Color, textSection.Text.Length));
+            }
+            else
+            {
+                var marker = _colorMarkers.FirstOrDefault(marker => marker.StartIndex == i);
+                if (marker != null) {
+                    textSection.ColorMarkers.Add(new ColorMarker(marker.Color, textSection.Text.Length));
+                    lastMarker = marker;
+                }
+                textSection.Text += _text[i];
+            }
+        }
+        if (stringSplitOptions == StringSplitOptions.TrimEntries)
+            textSection = textSection.Trim();
+
+        if (stringSplitOptions != StringSplitOptions.RemoveEmptyEntries || textSection.Text.Length > 0) {
+            result.Add(textSection);
+        }
+
+        return [.. result];
+    }
+
+    public ColoredString[] Split(char[] separator, int count = 0, StringSplitOptions stringSplitOptions = StringSplitOptions.None) 
+        => Split(separator.Select(c => c.ToString()).ToArray(), count, stringSplitOptions);
+
+    public ColoredString[] Split(params string[] separator) => Split(separator, 0, StringSplitOptions.None);
+
+    public ColoredString[] Split(params char[] separator) => Split(separator, 0, StringSplitOptions.None);
+
+    public ColoredString[] Split(string separator, int count = 0, StringSplitOptions stringSplitOptions = StringSplitOptions.None) 
+        => Split([separator], count, stringSplitOptions);
+
+    public ColoredString[] Split(char separator, int count = 0, StringSplitOptions stringSplitOptions = StringSplitOptions.None)	
+        => Split([separator], count, stringSplitOptions);
+
+    public ColoredString Trim() => TrimStart().TrimEnd();
+
+    public ColoredString TrimStart()
+    {
+        int startIndex = 0;
+        while (startIndex < _text.Length && char.IsWhiteSpace(_text[startIndex]))
+            startIndex++;
+        ColorMarker? lastWhiteSpaceMarker = _colorMarkers.LastOrDefault(marker => marker.StartIndex < startIndex);
+        var trimmedString = new ColoredString(_text[startIndex..]) { _colorMarkers = [.. _colorMarkers.Select(marker => new ColorMarker(marker.Color, marker.StartIndex - startIndex)).Where(marker => marker.StartIndex >= 0)] };
+        if (trimmedString.ColorMarkers.OrderBy(marker => marker.StartIndex).FirstOrDefault()?.StartIndex > 0 && lastWhiteSpaceMarker != null)
+            trimmedString.ColorMarkers.Add(new ColorMarker(lastWhiteSpaceMarker.Color, 0));
+        trimmedString.ColorMarkers = ValidateColorMarkers(trimmedString.ColorMarkers, trimmedString.Text.Length);
+        return trimmedString;
+    }
+
+    public ColoredString TrimEnd()
+    {
+        int endIndex = _text.Length - 1;
+        while (endIndex >= 0 && char.IsWhiteSpace(_text[endIndex]))
+            endIndex--;
+        return new ColoredString(_text[..(endIndex + 1)]) { _colorMarkers = [.. _colorMarkers.Where(marker => marker.StartIndex <= endIndex)] };
     }
 
     #endregion

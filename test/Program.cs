@@ -48,8 +48,14 @@ public class Program
         coloredString = coloredString.Replace("World", Color.Blue.For("Universe"));
         ColoredConsole.WriteLine(coloredString); // White:Hello, Blue:Universe!
 
-        coloredString = "Hello " + Color.Red.For("World") + "!";
-        coloredString = coloredString.Replace("orl", Color.Blue.For("or"));
-        ColoredConsole.WriteLine(coloredString); // White:Hello Red:W Blue:or Red:d White:!
+        coloredString = "Hello " + Color.Red.For("Word") + "!";
+        coloredString = coloredString.Replace("or", Color.Blue.For("orl"));
+        ColoredConsole.WriteLine(coloredString); // White:Hello Red:W Blue:orl Red:d White:!
+
+        ColoredString[] parts = coloredString.Split("l", stringSplitOptions: StringSplitOptions.RemoveEmptyEntries);
+        foreach (ColoredString part in parts)
+        {
+            ColoredConsole.WriteLine(part);
+        }
     }
 }
